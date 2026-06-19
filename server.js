@@ -142,7 +142,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'STF.html'));
 });
 
-// Database Connection — Uses Atlas (MONGODB_URI env var) on Render, falls back to local for dev
+// Database Connection — Uses Atlas (MONGODB_URI env var) on Render/production
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/stranger_to_friends";
 
 mongoose.connect(MONGODB_URI)
@@ -156,7 +156,7 @@ mongoose.connect(MONGODB_URI)
     })
     .catch(err => {
         console.error("❌ CONNECTION ERROR:", err.message);
-        console.log("TIP: Try switching to a Mobile Hotspot if your WiFi blocks MongoDB.");
+        console.log("TIP: Set the MONGODB_URI environment variable to your Atlas connection string.");
     });
 
 io.on('connection', (socket) => {
