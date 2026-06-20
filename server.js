@@ -330,6 +330,65 @@ app.post('/api/login', async (req, res) => {
     res.json({ success: !!donor, donor });
 });
 
+const activeOTPs = {};
+
+app.post('/api/forgot-password', async (req, res) => {
+    const { phone } = req.body;
+    try {
+        const donor = await Donor.findOne({ phone });
+        if (!donor) {
+            return res.status(404).json({ success: false, error: 'Donor not registered with this phone number.' });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Store in-memory with 5-minute expiry
+        activeOTPs[phone] = {
+            otp,
+            expiresAt: Date.now() + 5 * 60 * 1000
+        };
+
+        // Send OTP via SMS
+        const smsResult = await sendSMS(phone, `Your OTP for resetting your Stranger to Friends password is: ${otp}. Valid for 5 minutes.`);
+        
+        console.log(`🔑 [OTP] Generated OTP ${otp} for ${phone}`);
+        res.json({ success: true, message: 'OTP sent successfully!' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/reset-password', async (req, res) => {
+    const { phone, otp, newPassword } = req.body;
+    try {
+        const record = activeOTPs[phone];
+        if (!record) {
+            return res.status(400).json({ success: false, error: 'No OTP requested for this phone number.' });
+        }
+
+        if (record.expiresAt < Date.now()) {
+            delete activeOTPs[phone];
+            return res.status(400).json({ success: false, error: 'OTP has expired. Please request a new one.' });
+        }
+
+        if (record.otp !== otp) {
+            return res.status(400).json({ success: false, error: 'Invalid OTP. Please try again.' });
+        }
+
+        // OTP matches and is valid, update password
+        const donor = await Donor.findOneAndUpdate({ phone }, { password: newPassword }, { new: true });
+        if (!donor) {
+            return res.status(404).json({ success: false, error: 'Donor not found.' });
+        }
+
+        delete activeOTPs[phone];
+        res.json({ success: true, message: 'Password reset successful!' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.put('/api/donors/:id', async (req, res) => {
     try {
         const updatedDonor = await Donor.findByIdAndUpdate(req.params.id, req.body, { new: true });

@@ -150,32 +150,141 @@ if (donorForm) {
     });
 }
 
-// Handle Login (STF login.html) - Optimized
-const loginForm = document.querySelector('form');
-if (loginForm && window.location.pathname.includes('login')) {
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const phone = loginForm.querySelector('input[type="text"]').value;
-        const password = loginForm.querySelector('input[type="password"]').value;
+// Handle Login, Forgot Password, and Reset Password (STF login.html)
+if (window.location.pathname.includes('login')) {
+    const loginForm = document.getElementById('loginForm');
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    const resetForm = document.getElementById('resetPasswordForm');
+    
+    const forgotLink = document.getElementById('forgotPasswordLink');
+    const backToLoginLink = document.getElementById('backToLoginLink');
+    const backToLoginLinkReset = document.getElementById('backToLoginLinkReset');
 
-        try {
-            const response = await fetch(`${BASE_URL}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, password })
-            });
-            const result = await response.json();
-            if (result.success) {
-                localStorage.setItem('donorInfo', JSON.stringify(result.donor));
-                localStorage.setItem('isOnline', 'true'); // Auto-online for speed
-                window.location.href = 'donor-dashboard.html';
-            } else {
-                alert('Invalid credentials');
+    let forgotPhoneVal = '';
+
+    // Switch forms
+    if (forgotLink) {
+        forgotLink.onclick = (e) => {
+            e.preventDefault();
+            loginForm.style.display = 'none';
+            forgotForm.style.display = 'block';
+        };
+    }
+
+    if (backToLoginLink) {
+        backToLoginLink.onclick = (e) => {
+            e.preventDefault();
+            forgotForm.style.display = 'none';
+            loginForm.style.display = 'block';
+        };
+    }
+
+    if (backToLoginLinkReset) {
+        backToLoginLinkReset.onclick = (e) => {
+            e.preventDefault();
+            resetForm.style.display = 'none';
+            loginForm.style.display = 'block';
+        };
+    }
+
+    // Submit Login
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phone = loginForm.querySelector('input[type="text"]').value;
+            const password = loginForm.querySelector('input[type="password"]').value;
+
+            try {
+                const response = await fetch(`${BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    localStorage.setItem('donorInfo', JSON.stringify(result.donor));
+                    localStorage.setItem('isOnline', 'true'); // Auto-online for speed
+                    window.location.href = 'donor-dashboard.html';
+                } else {
+                    alert('Invalid credentials');
+                }
+            } catch (err) {
+                alert('Server error');
             }
-        } catch (err) {
-            alert('Server error');
-        }
-    });
+        });
+    }
+
+    // Submit Forgot Password
+    if (forgotForm) {
+        forgotForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phoneInput = document.getElementById('forgotPhone');
+            const phone = phoneInput.value.trim();
+            const submitBtn = forgotForm.querySelector('button');
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Sending OTP...';
+
+            try {
+                const response = await fetch(`${BASE_URL}/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    forgotPhoneVal = phone;
+                    alert('OTP sent successfully via SMS!');
+                    forgotForm.style.display = 'none';
+                    resetForm.style.display = 'block';
+                } else {
+                    alert(result.error || 'Error sending OTP');
+                }
+            } catch (err) {
+                alert('Network error requesting OTP.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Send OTP →';
+            }
+        });
+    }
+
+    // Submit Reset Password
+    if (resetForm) {
+        resetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const otp = document.getElementById('resetOtp').value.trim();
+            const newPassword = document.getElementById('resetNewPassword').value.trim();
+            const submitBtn = resetForm.querySelector('button');
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Resetting Password...';
+
+            try {
+                const response = await fetch(`${BASE_URL}/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: forgotPhoneVal, otp, newPassword })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    alert('Password reset successful! You can now log in.');
+                    resetForm.style.display = 'none';
+                    loginForm.style.display = 'block';
+                    loginForm.reset();
+                    resetForm.reset();
+                    forgotForm.reset();
+                } else {
+                    alert(result.error || 'Error resetting password');
+                }
+            } catch (err) {
+                alert('Network error resetting password.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Reset Password →';
+            }
+        });
+    }
 }
 
 // Handle Blood Search (STF3.html) - FAST SEARCH
