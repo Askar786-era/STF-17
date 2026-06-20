@@ -13,6 +13,12 @@ if (typeof io !== 'undefined') {
         socket.emit('donorOnline', donorInfo.phone);
     }
 
+    // Check if requester phone is stored
+    const requesterPhone = localStorage.getItem('requesterPhone');
+    if (requesterPhone) {
+        socket.emit('requesterOnline', requesterPhone);
+    }
+
     // Global Stats Updates
     socket.on('globalStatsUpdate', (stats) => {
         if (stats.bloodRequests !== undefined) {
@@ -86,7 +92,12 @@ function showIncomingCallModal(data) {
 
     document.getElementById('acceptCallBtn').onclick = () => {
         localStorage.setItem('pendingCall', JSON.stringify(data));
-        window.location.href = 'donor-dashboard.html?answer=true';
+        if (localStorage.getItem('donorInfo')) {
+            window.location.href = 'donor-dashboard.html?answer=true';
+        } else {
+            window.open('call.html?answer=true', 'STF_Call', 'width=400,height=600');
+            modal.style.display = 'none';
+        }
     };
 
     document.getElementById('declineCallBtn').onclick = () => {
@@ -176,6 +187,7 @@ if (searchForm) {
         resultsEl.innerHTML = '<div style="text-align:center; padding:20px;">🔍 Searching for matching donors...</div>';
 
         const patientName = document.getElementById('patientName').value;
+        const patientPhone = document.getElementById('patientPhone').value;
         const bloodGroup = document.getElementById('searchBloodGroup').value;
         const city = document.getElementById('searchCity').value;
         const state = document.getElementById('searchState').value;
@@ -187,8 +199,14 @@ if (searchForm) {
             await fetch(`${BASE_URL}/blood-requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ patientName, bloodGroup, city, state, zipCode, hospital, message: hospital })
+                body: JSON.stringify({ patientName, phone: patientPhone, bloodGroup, city, state, zipCode, hospital, message: hospital, socketId: socket ? socket.id : "" })
             });
+
+            // Set requester phone in localStorage and emit requesterOnline
+            localStorage.setItem('requesterPhone', patientPhone);
+            if (socket) {
+                socket.emit('requesterOnline', patientPhone);
+            }
         } catch (err) {
             console.error('Error saving blood request:', err);
         }

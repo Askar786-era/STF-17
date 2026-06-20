@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const bloodRequestSchema = new mongoose.Schema({
     patientName: { type: String, required: true },
     phone: { type: String, default: "" },
+    socketId: { type: String, default: "" },
     bloodGroup: { type: String, required: true, index: true },
     city: { type: String, required: true, index: true },
     state: { type: String, required: true, index: true },

@@ -190,7 +190,7 @@
                         </div>
                         ${req.phone ? `
                         <div class="request-actions">
-                            <button class="call-btn" onclick="window.open('call.html?phone=${req.phone || ''}&name=${encodeURIComponent(req.patientName)}', 'STF_Call', 'width=400,height=600')">📞 Call</button>
+                            <button class="call-btn" onclick="window.open('call.html?phone=${req.phone || ''}&name=${encodeURIComponent(req.patientName)}&type=requester', 'STF_Call', 'width=400,height=600')">📞 Call</button>
                             <button class="msg-btn" onclick="openChat('${req.phone || ''}', '${req.patientName}')">💬 Message</button>
                         </div>
                         ` : ''}

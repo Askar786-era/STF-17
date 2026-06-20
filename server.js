@@ -26,6 +26,7 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 const onlineDonors = {}; 
+const onlineRequesters = {}; 
 const activeCalls = {}; 
 
 // SMS Gateway Integration (MSG91, Fast2SMS, Twilio)
@@ -156,24 +157,51 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'STF.html'));
 });
 
-// Database Connection — Uses Atlas (MONGODB_URI env var) on Render/production
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/stranger_to_friends";
+// Database Connection — Uses Atlas (MONGODB_URI env var) on Render/production, falls back to local or in-memory DB
+const { MongoMemoryServer } = require('mongodb-memory-server');
 
-mongoose.connect(MONGODB_URI)
-    .then(async () => {
+async function connectDB() {
+    const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/stranger_to_friends";
+    
+    try {
+        await mongoose.connect(MONGODB_URI);
         const dbType = process.env.MONGODB_URI ? "☁️ MongoDB Atlas" : "💻 Local MongoDB";
         console.log(`✅ SUCCESS: Connected to ${dbType}!`);
+    } catch (err) {
+        if (!process.env.MONGODB_URI) {
+            console.log("⚠️ Local MongoDB connection failed, starting in-memory MongoDB...");
+            try {
+                const mongod = await MongoMemoryServer.create();
+                const uri = mongod.getUri();
+                await mongoose.connect(uri);
+                console.log(`✅ SUCCESS: Connected to In-Memory MongoDB!`);
+            } catch (memErr) {
+                console.error("❌ IN-MEMORY MONGODB ERROR:", memErr.message);
+                process.exit(1);
+            }
+        } else {
+            console.error("❌ CONNECTION ERROR:", err.message);
+            process.exit(1);
+        }
+    }
+
+    // Initialize stats
+    try {
         const stats = ['bloodRequests', 'livesSaved'];
         for (const key of stats) {
             await Stats.findOneAndUpdate({ key }, { $setOnInsert: { value: 0 } }, { upsert: true });
         }
-    })
-    .catch(err => {
-        console.error("❌ CONNECTION ERROR:", err.message);
-        console.log("TIP: Set the MONGODB_URI environment variable to your Atlas connection string.");
-    });
+    } catch (statErr) {
+        console.error("❌ STATS INITIATION ERROR:", statErr.message);
+    }
+}
+
+connectDB();
 
 io.on('connection', (socket) => {
+    socket.on('requesterOnline', (phone) => {
+        onlineRequesters[phone] = socket.id;
+    });
     // Initial count (Total Registered Donors)
     Donor.countDocuments().then(count => socket.emit('donorCountUpdate', count));
     
@@ -195,6 +223,14 @@ io.on('connection', (socket) => {
         await Donor.findOneAndUpdate({ socketId: socket.id }, { isOnline: false, socketId: null });
         io.emit('donorCountUpdate', await Donor.countDocuments());
 
+        // Remove from onlineRequesters if applicable
+        for (const phone in onlineRequesters) {
+            if (onlineRequesters[phone] === socket.id) {
+                delete onlineRequesters[phone];
+                break;
+            }
+        }
+
         // Handle disconnect during active call
         const peerSocketId = activeCalls[socket.id];
         if (peerSocketId) {
@@ -214,16 +250,30 @@ io.on('connection', (socket) => {
     });
 
     // Call Signaling
-    socket.on('callUser', async ({ donorPhone, signalData, callerName }) => {
-        const donor = await Donor.findOne({ phone: donorPhone });
-        if (donor && donor.isOnline && donor.socketId) {
-            io.to(donor.socketId).emit('incomingCall', { signal: signalData, from: callerName, callerSocket: socket.id });
-        } else if (donor) {
-            // Donor is offline - Send real SMS Notification
-            await sendSMS(donorPhone, `URGENT BLOOD ALERT: ${callerName} needs your help! Please log in to Stranger to Friends immediately to accept the call.`);
-            socket.emit('callError', { message: 'Donor is offline. An urgent SMS notification has been sent to them!' });
-        } else {
-            socket.emit('callError', { message: 'Donor not found.' });
+    socket.on('callUser', async ({ donorPhone, phone, signalData, callerName, type }) => {
+        const targetPhone = phone || donorPhone;
+        const targetType = type || 'donor';
+
+        if (targetType === 'donor') {
+            const donor = await Donor.findOne({ phone: targetPhone });
+            if (donor && donor.isOnline && donor.socketId) {
+                io.to(donor.socketId).emit('incomingCall', { signal: signalData, from: callerName, callerSocket: socket.id });
+            } else if (donor) {
+                // Donor is offline - Send real SMS Notification
+                await sendSMS(targetPhone, `URGENT BLOOD ALERT: ${callerName} needs your help! Please log in to Stranger to Friends immediately to accept the call.`);
+                socket.emit('callError', { message: 'Donor is offline. An urgent SMS notification has been sent to them!' });
+            } else {
+                socket.emit('callError', { message: 'Donor not found.' });
+            }
+        } else if (targetType === 'requester') {
+            const requesterSocketId = onlineRequesters[targetPhone];
+            if (requesterSocketId) {
+                io.to(requesterSocketId).emit('incomingCall', { signal: signalData, from: callerName, callerSocket: socket.id });
+            } else {
+                // Requester is offline - Send real SMS Notification
+                await sendSMS(targetPhone, `URGENT: A donor (${callerName}) is trying to contact you regarding your blood request. Please open the Stranger to Friends app to answer the call.`);
+                socket.emit('callError', { message: 'Requester is offline. An SMS notification has been sent to them!' });
+            }
         }
     });
 
