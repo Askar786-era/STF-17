@@ -298,6 +298,22 @@ function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Helper: build a flexible regex that ignores spaces (e.g. "tamil nadu" matches "tamilnadu" and vice versa)
+function flexibleRegex(str) {
+    if (!str) return '';
+    const trimmed = str.trim();
+    const escapedParts = [];
+    for (let i = 0; i < trimmed.length; i++) {
+        const char = trimmed[i];
+        if (/\s/.test(char)) {
+            continue;
+        }
+        const escapedChar = char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        escapedParts.push(escapedChar);
+    }
+    return escapedParts.join('\\s*');
+}
+
 // API Routes
 app.post('/api/blood-requests', async (req, res) => {
     try {
@@ -316,8 +332,8 @@ app.get('/api/blood-requests/district', async (req, res) => {
     try {
         const { city, state } = req.query;
         let query = {};
-        if (city) query.city = { $regex: new RegExp(escapeRegex(city.trim()), "i") };
-        if (state) query.state = { $regex: new RegExp(escapeRegex(state.trim()), "i") };
+        if (city) query.city = { $regex: new RegExp(flexibleRegex(city), "i") };
+        if (state) query.state = { $regex: new RegExp(flexibleRegex(state), "i") };
         
         const requests = await BloodRequest.find(query).sort({ createdAt: -1 });
         res.json(requests);
@@ -413,8 +429,8 @@ app.put('/api/donors/:id', async (req, res) => {
 app.get('/api/donors/search', async (req, res) => {
     const { bloodGroup, city, state, zipCode } = req.query;
     let query = { bloodGroup };
-    if (city) query.city = { $regex: new RegExp(escapeRegex(city.trim()), "i") };
-    if (state) query.state = { $regex: new RegExp(escapeRegex(state.trim()), "i") };
+    if (city) query.city = { $regex: new RegExp(flexibleRegex(city), "i") };
+    if (state) query.state = { $regex: new RegExp(flexibleRegex(state), "i") };
     if (zipCode) query.zipCode = zipCode.trim();
     
     const donors = await Donor.find(query).select('-password');
@@ -449,9 +465,9 @@ app.post('/api/messages/broadcast', async (req, res) => {
 
     // Build query to find all matching donors in the district
     let query = { bloodGroup };
-    if (city)    query.city    = { $regex: new RegExp(city, 'i') };
-    if (state)   query.state   = { $regex: new RegExp(state, 'i') };
-    if (zipCode) query.zipCode = zipCode;
+    if (city)    query.city    = { $regex: new RegExp(flexibleRegex(city), 'i') };
+    if (state)   query.state   = { $regex: new RegExp(flexibleRegex(state), 'i') };
+    if (zipCode) query.zipCode = zipCode.trim();
 
     const donors = await Donor.find(query).select('phone fullName');
 
