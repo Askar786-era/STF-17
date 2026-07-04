@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>District Blood Banks — Stranger to Friends</title>
+    <meta name="description" content="Check blood availability in your district. View all registered blood banks and their inventory.">
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <style>
+        :root {
+            --primary: #cc0000;
+            --primary-hover: #b30000;
+            --bg: #f5f7f8;
+            --card-bg: #ffffff;
+            --text-dark: #333333;
+            --text-muted: #666666;
+            --border-radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background:var(--bg); color:var(--text-dark); min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:40px 20px; }
+        .container { width:100%; max-width:800px; }
+        .header-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+        .back-btn { background:#fff; color:var(--text-dark); border:1px solid #ddd; padding:10px 20px; border-radius:var(--border-radius); cursor:pointer; text-decoration:none; font-size:14px; font-weight:700; box-shadow:0 4px 6px rgba(0,0,0,0.02); transition:var(--transition); }
+        .back-btn:hover { background:#eee; transform:translateY(-2px); }
+        .dashboard-card { background:var(--card-bg); padding:35px; border-radius:24px; box-shadow:0 15px 35px rgba(0,0,0,0.05); width:100%; border:1px solid rgba(0,0,0,0.03); animation:fadeIn .5s ease-out; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        .page-title { text-align:center; color:var(--primary); font-size:26px; font-weight:700; margin-bottom:6px; }
+        .page-subtitle { text-align:center; color:var(--text-muted); font-size:14px; margin-bottom:28px; }
+        .search-section { margin-bottom:24px; }
+        .search-section input { width:100%; padding:12px 16px; border-radius:12px; border:1.5px solid #ddd; font-size:14px; outline:none; transition:var(--transition); }
+        .search-section input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(204,0,0,0.08); }
+        .search-section button { margin-top:12px; width:100%; padding:12px; border:none; border-radius:12px; background:linear-gradient(to right, #e60000, #cc0000); color:#fff; font-size:15px; font-weight:700; cursor:pointer; transition:var(--transition); }
+        .search-section button:hover { opacity:0.9; transform:scale(1.01); }
+        .bank-card { background:#fafafa; border:1px solid #f0f0f0; border-radius:14px; padding:20px; margin-bottom:16px; transition:var(--transition); }
+        .bank-card:hover { box-shadow:0 6px 16px rgba(0,0,0,0.06); transform:translateY(-2px); }
+        .bank-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+        .bank-name { font-size:18px; font-weight:700; color:var(--primary); }
+        .bank-contact { font-size:13px; color:var(--text-muted); }
+        .inventory-table { width:100%; border-collapse:collapse; margin-top:8px; }
+        .inventory-table th, .inventory-table td { padding:6px 8px; text-align:center; font-size:13px; }
+        .inventory-table th { background:#fff5f5; color:var(--primary); }
+        .inventory-table td { background:#fff; }
+        .badge-available { background:#e6f9ed; color:#1a7a3a; padding:2px 6px; border-radius:6px; font-weight:600; }
+        .badge-unavailable { background:#fff0f0; color:#cc0000; padding:2px 6px; border-radius:6px; font-weight:600; text-decoration:line-through; }
+        .no-results { text-align:center; color:var(--text-muted); font-size:15px; padding:30px 0; }
+        .msg { padding:12px 16px; border-radius:10px; margin-top:12px; font-size:13px; text-align:center; }
+        .msg.error { background:#fff0f0; color:#cc0000; border:1px solid #ffcccc; }
+        .msg.success { background:#e6f9ed; color:#1a7a3a; border:1px solid #b2dfca; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header-bar">
+        <a href="STF.html" class="back-btn">← Home</a>
+        <a href="STF login.html" class="back-btn">Login</a>
+    </div>
+    <div class="dashboard-card">
+        <p class="page-title">🔎 District Blood Banks</p>
+        <p class="page-subtitle">Search by district and state to see blood availability.</p>
+        <div class="search-section">
+            <input type="text" id="districtInput" placeholder="District (e.g., Chennai)" autocomplete="off">
+            <input type="text" id="stateInput" placeholder="State (e.g., Tamil Nadu)" autocomplete="off" style="margin-top:8px;">
+            <select id="bloodGroupInput" style="width:100%; padding:12px 16px; border-radius:12px; border:1.5px solid #ddd; font-size:14px; outline:none; margin-top:8px; transition:var(--transition); background:white;">
+                <option value="">All Blood Groups (Optional)</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+            </select>
+            <button onclick="searchBanks()">Search →</button>
+        </div>
+        <div id="message"></div>
+        <div id="banksContainer"></div>
+    </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+<script>
+    const ALL_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+    function showMsg(text, type='error') {
+        const el = document.getElementById('message');
+        el.innerHTML = `<div class="msg ${type}">${text}</div>`;
+        setTimeout(()=>{ el.innerHTML=''; },5000);
+    }
+
+    async function searchBanks() {
+        const district = document.getElementById('districtInput').value.trim();
+        const state    = document.getElementById('stateInput').value.trim();
+        const bloodGroup = document.getElementById('bloodGroupInput').value;
+        if (!district && !state) { showMsg('Enter district or state to search.', 'error'); return; }
+        const query = new URLSearchParams();
+        if (district) query.append('district', district);
+        if (state)    query.append('state', state);
+        if (bloodGroup) query.append('bloodGroup', bloodGroup);
+        try {
+            const res = await fetch(`${BASE_URL}/bloodbank/district?${query}`);
+            const data = await res.json();
+            if (!data.success) { showMsg('Error: '+data.error, 'error'); return; }
+            renderBanks(data.banks);
+        } catch (e) {
+            showMsg('Network error while fetching banks.', 'error');
+        }
+    }
+
+    function renderBanks(banks) {
+        const container = document.getElementById('banksContainer');
+        container.innerHTML = '';
+        if (!banks || banks.length===0) {
+            container.innerHTML = '<div class="no-results">No blood banks found for the selected location.</div>';
+            return;
+        }
+        const selectedBloodGroup = document.getElementById('bloodGroupInput').value;
+        banks.forEach(bank => {
+            const card = document.createElement('div');
+            card.className = 'bank-card';
+            const inventoryMap = {};
+            (bank.inventory||[]).forEach(item=>{ inventoryMap[item.bloodGroup]=item; });
+            const rows = ALL_GROUPS.map(bg=>{
+                const entry = inventoryMap[bg];
+                const isSelected = selectedBloodGroup && bg === selectedBloodGroup;
+                const highlightStyle = isSelected ? 'style="background-color: #fff0f0; font-weight: bold; border-left: 4px solid var(--primary);"' : '';
+                if (!entry) return `<tr ${highlightStyle}><td>${bg}</td><td class="badge-unavailable">Not Available</td></tr>`;
+                const badge = entry.available ? `<span class="badge-available">${entry.units} units</span>` : `<span class="badge-unavailable">Not Available</span>`;
+                return `<tr ${highlightStyle}><td>${bg}</td><td>${badge}</td></tr>`;
+            }).join('');
+            card.innerHTML = `
+                <div class="bank-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div>
+                        <div class="bank-name" style="font-size:18px; font-weight:700; color:var(--primary);">${bank.bankName}</div>
+                        <div class="bank-location" style="font-size:13px;color:var(--text-muted);margin-top:2px;">📍 ${bank.district}, ${bank.state}</div>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="call-btn" style="background:#cc0000; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;" 
+                                onclick="window.open('call.html?phone=${bank.phone}&name=${bank.bankName}&type=bloodbank', 'STF_Call', 'width=400,height=600')">📞 Call</button>
+                        <button class="msg-btn" style="background:#333; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;" 
+                                onclick="openChat('${bank.phone}', '${bank.bankName}')">💬 Message</button>
+                    </div>
+                </div>
+                <table class="inventory-table">
+                    <thead><tr><th>Blood Group</th><th>Availability</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+            container.appendChild(card);
+        });
+    }
+</script>
+</body>
+</html>

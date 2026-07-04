@@ -2,3 +2,4 @@ node_modules/
 data/
 mongodb_data/
 .env
+scratch/
