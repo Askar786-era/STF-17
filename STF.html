@@ -21,9 +21,17 @@
 
     <!-- Header -->
     <header>
-        <div>
-            <h2>Stranger To Friend</h2>
-            <p>produced by-ERAS</p>
+        <div style="display: flex; align-items: center; gap: 30px;">
+            <div>
+                <h2>Stranger To Friend</h2>
+                <p>produced by-ERAS</p>
+            </div>
+            <nav style="display: flex; gap: 20px; margin-left: 20px;">
+                <a href="STF.html" style="text-decoration: none; color: #cc0000; font-weight: bold; font-size: 15px;">Home</a>
+                <a href="STF3.html" style="text-decoration: none; color: #555; font-weight: 600; font-size: 15px;">Find Donors</a>
+                <a href="district-bloodbank.html" style="text-decoration: none; color: #555; font-weight: 600; font-size: 15px;">District Blood Banks</a>
+                <a href="blood-bank.html" style="text-decoration: none; color: #555; font-weight: 600; font-size: 15px;">Blood Bank Portal</a>
+            </nav>
         </div>
 
         <div class="right-header" id="headerAuth" style="display: flex; align-items: center; gap: 10px;">
@@ -101,26 +109,68 @@
         </div>
     </section>
 
-
+    <!-- Stats Row -->
+    <section class="stats" style="display: flex; justify-content: center; gap: 20px; padding: 40px 20px; flex-wrap: wrap;">
+        <div class="stat-card" style="background: #fff; padding: 20px 35px; border-radius: 15px; display: flex; align-items: center; gap: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.03); width: 250px;">
+            <div class="stat-icon" style="font-size: 25px;">👥</div>
+            <div>
+                <h2 id="donorCountDisplay" style="color: #cc0000; font-size: 2rem; margin: 0;">0</h2>
+                <p style="margin: 0; color: #888; font-size: 13px;">Registered Donors</p>
+            </div>
+        </div>
+        <div class="stat-card" style="background: #fff; padding: 20px 35px; border-radius: 15px; display: flex; align-items: center; gap: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.03); width: 250px;">
+            <div class="stat-icon" style="font-size: 25px;">📢</div>
+            <div>
+                <h2 id="bloodRequestCount" style="color: #cc0000; font-size: 2rem; margin: 0;">0</h2>
+                <p style="margin: 0; color: #888; font-size: 13px;">Blood Requests</p>
+            </div>
+        </div>
+        <div class="stat-card" style="background: #fff; padding: 20px 35px; border-radius: 15px; display: flex; align-items: center; gap: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.03); width: 250px;">
+            <div class="stat-icon" style="font-size: 25px;">💖</div>
+            <div>
+                <h2 id="livesSavedCount" style="color: #cc0000; font-size: 2rem; margin: 0;">0</h2>
+                <p style="margin: 0; color: #888; font-size: 13px;">Lives Saved</p>
+            </div>
+        </div>
+    </section>
 
     <!-- Action Cards Section -->
-    <section class="action-section">
-        <div class="action-card">
+    <section class="action-section" style="display: flex; justify-content: center; gap: 30px; padding: 60px 20px; flex-wrap: wrap;">
+        <!-- Become a Donor -->
+        <div class="action-card" style="background: #fff; padding: 40px; border-radius: 25px; width: 350px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.05);">
             <form action="STF2.html">
-                <div class="action-icon heart">❤️</div>
+                <div class="action-icon heart" style="font-size: 40px; margin-bottom: 20px;">❤️</div>
                 <h3>Become a Donor</h3>
-                <p>Register to save lives. Your blood can help someone in critical need.</p>
+                <p style="min-height: 48px;">Register to save lives. Your blood can help someone in critical need.</p>
                 <button class="btn-primary">Register as Donor →</button>
             </form>
         </div>
 
-        <div class="action-card">
-            <div class="action-icon search">🔎</div>
+        <!-- Find a Donor -->
+        <div class="action-card" style="background: #fff; padding: 40px; border-radius: 25px; width: 350px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.05);">
             <form action="STF3.html">
+                <div class="action-icon search" style="font-size: 40px; margin-bottom: 20px;">🔎</div>
                 <h3>Find a Donor</h3>
-                <p>Search for blood donors in your area. Get instant contact details.</p>
+                <p style="min-height: 48px;">Search for blood donors in your area. Get instant contact details.</p>
                 <button class="btn-outline">Request Blood →</button>
             </form>
+        </div>
+
+        <!-- District Blood Banks -->
+        <div class="action-card" style="background: #fff; padding: 40px; border-radius: 25px; width: 350px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div class="action-icon" style="font-size: 40px; margin-bottom: 20px;">🏥</div>
+                <h3>District Blood Banks</h3>
+                <p style="min-height: 48px;">Search available blood stocks at licensed district blood banks near you.</p>
+            </div>
+            <div>
+                <form action="district-bloodbank.html">
+                    <button class="btn-outline" style="border-color: #d32f2f; color: #d32f2f;">Search Blood Banks →</button>
+                </form>
+                <div style="margin-top: 15px; font-size: 13px;">
+                    <a href="blood-bank.html" style="color: #555; text-decoration: underline; font-weight: 600;">Blood Bank Admin Portal</a>
+                </div>
+            </div>
         </div>
     </section>
 
