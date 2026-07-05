@@ -152,6 +152,9 @@ if (donorForm) {
 
 // Handle Login, Forgot Password, and Reset Password (STF login.html)
 if (window.location.pathname.includes('login')) {
+    if (localStorage.getItem('donorInfo')) {
+        window.location.href = 'donor-dashboard.html';
+    }
     const loginForm = document.getElementById('loginForm');
     const forgotForm = document.getElementById('forgotPasswordForm');
     const resetForm = document.getElementById('resetPasswordForm');

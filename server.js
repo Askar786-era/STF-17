@@ -481,23 +481,45 @@ app.put('/api/donors/:id', async (req, res) => {
 });
 
 app.get('/api/donors/search', async (req, res) => {
-    const { bloodGroup, city, state, zipCode } = req.query;
-    let query = { bloodGroup, isOnline: true };
-    if (city) query.city = { $regex: new RegExp(flexibleRegex(city), "i") };
-    if (state) query.state = { $regex: new RegExp(flexibleRegex(state), "i") };
-    if (zipCode) query.zipCode = zipCode.trim();
-    
-    const donors = await Donor.find(query).select('-password');
-    // Decrypt PII fields before returning (exclude password)
-    const decryptedDonors = donors.map(d => {
-        const dec = d.decryptFields();
-        delete dec.password;
-        return dec;
-    });
-    
-    const stat = await Stats.findOneAndUpdate({ key: 'bloodRequests' }, { $inc: { value: 1 } }, { upsert: true, new: true });
-    io.emit('globalStatsUpdate', { bloodRequests: stat.value });
-    res.json(decryptedDonors);
+    try {
+        const { bloodGroup, city, state, zipCode } = req.query;
+        if (!bloodGroup) {
+            return res.status(400).json({ success: false, error: 'bloodGroup is required.' });
+        }
+
+        // Fetch all online donors of the matching blood group
+        const query = { bloodGroup, isOnline: true };
+        const donors = await Donor.find(query).select('-password');
+
+        // Decrypt and filter in memory because city, state, and zipCode are encrypted in the database
+        const cityRegex = city ? new RegExp(flexibleRegex(city), "i") : null;
+        const stateRegex = state ? new RegExp(flexibleRegex(state), "i") : null;
+        const zipClean = zipCode ? zipCode.trim() : null;
+
+        const decryptedDonors = donors.map(d => d.decryptFields()).filter(d => {
+            if (cityRegex && !cityRegex.test(d.city)) return false;
+            if (stateRegex && !stateRegex.test(d.state)) return false;
+            if (zipClean && d.zipCode !== zipClean) return false;
+            return true;
+        });
+
+        // Hide password from public results
+        decryptedDonors.forEach(d => {
+            delete d.password;
+        });
+
+        // Increment stats
+        try {
+            const stat = await Stats.findOneAndUpdate({ key: 'bloodRequests' }, { $inc: { value: 1 } }, { upsert: true, new: true });
+            io.emit('globalStatsUpdate', { bloodRequests: stat.value });
+        } catch (statErr) {
+            console.error('Error updating stats:', statErr);
+        }
+
+        res.json(decryptedDonors);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 
